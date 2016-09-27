@@ -18,9 +18,11 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 /* --- symbolic constants --- */
 #define HOSTNAMEMAX 100
+pid_t pid;
 
 /* --- use the /proc filesystem to obtain the hostname --- */
 char *gethostname(char *hostname)
@@ -39,11 +41,9 @@ char *gethostname(char *hostname)
 /* --- execute a shell command --- */
 int executeshellcmd (Shellcmd *shellcmd)
 {
-  pid_t pid = fork();
-  char * filenameIn = shellcmd->rd_stdin;
+  pid = fork();
   char * filenameOut = shellcmd->rd_stdout;
   int isBackground = shellcmd->background;
-  Cmd * cmd = shellcmd->the_cmds;
   if(pid == 0) { // child process
     if(isBackground) {
       int fid = open("/dev/null", O_RDWR);
@@ -53,21 +53,24 @@ int executeshellcmd (Shellcmd *shellcmd)
       dup2(fid, 1);
     }
 
-    pipecmd(cmd,filenameIn);
+    pipecmd(shellcmd);
 
   } else { // parent process
     if(!isBackground) {
       int returnStatus;
       waitpid(pid, &returnStatus, 0);
+      return returnStatus;
     }
   }
   return 0;
 }
 
-/* --- execute program --- */
-int executeProgram(char **argv) {
-  execvp(argv[0], argv);
-  return 0;
+void ctrlCHandler(int dummy) {
+  if(dummy == SIGINT) {
+    if(pid) {
+      kill(pid, SIGTERM);
+    }
+  }
 }
 
 /* --- main loop of the simple shell --- */
@@ -78,7 +81,9 @@ int main(int argc, char* argv[]) {
   char hostname[HOSTNAMEMAX];
   int terminate = 0;
   Shellcmd shellcmd;
-  
+
+  signal(SIGINT, ctrlCHandler);
+
   if (gethostname(hostname)) {
 
     /* parse commands until exit or ctrl-c */

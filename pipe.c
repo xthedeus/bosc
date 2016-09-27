@@ -19,48 +19,50 @@
 #include "print.h"
 #include "pipe.h"
 
-int pipecmd(Cmd * cmd, char * inFilename)
+int pipecmd(Shellcmd *shellcmd)
 {
-    char ** args = cmd->cmd;
+    Cmd *cmdList = shellcmd->the_cmds;
+    char ** cmd = cmdList->cmd;
+    char * filenameIn = shellcmd->rd_stdin;
 
-    if(cmd->next != NULL) {
+    if(cmd != NULL) {
       int fid_pipe[2];
-      pipe(fid_pipe);
-      pid_t pid = fork();
 
-      if(pid == 0) { // child process
+      pipe(fid_pipe);
+      pid_t pid2 = fork();
+
+      if(pid2 == 0) { // child process
         close(fid_pipe[0]);
         close(1);
         dup(fid_pipe[1]);
-        pipecmd(cmd->next, NULL);
+
+        Shellcmd *newshellcmd = shellcmd;
+        newshellcmd->the_cmds = cmdList->next;
+        newshellcmd->rd_stdin = NULL;
+        pipecmd(newshellcmd);
+
       } else { // parent process
         int returnStatus;
+
         close(fid_pipe[1]);
-        dup(fid_pipe[0]);
         close(0);
-        char * argv[] = { args[0], inFilename, NULL };
-        if(inFilename) {
-          if(execvp(args[0], argv) < 0) {
-            printf("Command '%s' not found.\n", args[0]);
-          }
-        } else {
-          if(execvp(args[0], args) < 0) {
-            printf("Command '%s' not found.\n", args[0]);
-          }
+        dup(fid_pipe[0]);
+
+
+        char * argv[] = { *cmd, filenameIn, NULL };
+
+        if(execvp(*cmd, filenameIn ? argv : cmd) < 0) {
+          printf("Command not found.\n");
         }
-        waitpid(pid, &returnStatus, 0);
+
+        waitpid(pid2, &returnStatus, 0);
+        
       }
 
     } else {
-      char * argv[] = { args[0], inFilename, NULL };
-      if(inFilename) {
-        if(execvp(args[0], argv)) {
-          printf("Command '%s' not found.\n", args[0]);
-        }
-      } else {
-        if(execvp(args[0], args) < 0) {
-          printf("Command not found.\n");
-        }
+      char * argv[] = { *cmd, filenameIn, NULL };
+      if(execvp(*cmd, filenameIn ? argv : cmd) < 0) {
+        printf("Command not found.\n");
       }
     }
     return 0;

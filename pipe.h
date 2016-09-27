@@ -8,6 +8,6 @@
 #ifndef _PIPE_H
 #define _PIPE_H
 
-int pipecmd(Cmd * cmd, char * inFilename);
+int pipecmd(Shellcmd *shellcmd);
 
 #endif
