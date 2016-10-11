@@ -16,3 +16,4 @@ extern int parse ( char *, Shellcmd *);
 extern int nexttoken( char *, char **);
 extern int acmd( char *, Cmd **);
 extern int isidentifier( char * );
+extern int parsecommand( char *cmdline, Shellcmd *shellcmd );

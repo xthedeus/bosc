@@ -19,13 +19,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <unistd.h>
 
 /* --- symbolic constants --- */
 #define HOSTNAMEMAX 100
 pid_t pid;
 
 /* --- use the /proc filesystem to obtain the hostname --- */
-char *gethostname(char *hostname)
+char *getboshhostname(char *hostname)
 {
   FILE *fp;
   fp = fopen("/proc/sys/kernel/hostname", "r");
@@ -57,9 +58,7 @@ int executeshellcmd (Shellcmd *shellcmd)
 
   } else { // parent process
     if(!isBackground) {
-      int returnStatus;
-      waitpid(pid, &returnStatus, 0);
-      return returnStatus;
+      waitpid(pid, 0, 0);
     }
   }
   return 0;
@@ -84,7 +83,7 @@ int main(int argc, char* argv[]) {
 
   signal(SIGINT, ctrlCHandler);
 
-  if (gethostname(hostname)) {
+  if (getboshhostname(hostname)) {
 
     /* parse commands until exit or ctrl-c */
     while (!terminate) {
